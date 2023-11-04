@@ -1,6 +1,7 @@
 import socket
 import threading
 from pathlib import Path
+import vlc
 
 VIDEO_DIR = Path("videos")
 
@@ -15,13 +16,30 @@ class ClientHandler(threading.Thread):
 
         # For simplicity, just send a list of movies as a response
         movie_list = '\n'.join([video.name for video in VIDEO_DIR.iterdir()])
-        print(movie_list, type(movie_list))
         self.client_socket.sendall(movie_list.encode())
 
-        # Here you would handle the RTSP handshake, setup RTP stream, handle RTCP feedback, etc.
+        # After sending movie list, wait for client's choice
+        chosen_movie = self.client_socket.recv(1024).decode()
+        video_path = VIDEO_DIR / chosen_movie
 
+        # Start VLC instance to stream video via RTSP
+        instance = vlc.Instance("--no-xlib")
+        media = instance.media_new_path(video_path)
+
+        # RTSP stream setup
+        stream_output = f"sout=#rtp{{sdp=rtsp://:5555/{chosen_movie}}}"
+        media.add_option(stream_output)
+
+        player = instance.media_player_new()
+        player.set_media(media)
+        player.play()
+
+        # Keep the connection open to handle potential RTSP commands
+        # This is a basic example; a full implementation would handle commands like PAUSE, PLAY, etc.
+        self.client_socket.recv(1024)
+        player.stop()
         self.client_socket.close()
-        print("Closed socket")
+        print(f"Streamed {chosen_movie} and closed connection")
 
 
 def main():
