@@ -1,25 +1,26 @@
 import socket
 from gui import VideoPlayerGUI
-import vlc
 
-HOST = 'localhost'
-PORT = 65432
-
+HOST = 'localhost'  # The server's hostname or IP address
+PORT = 65432        # The port used by the server
 
 class VODClient:
     def __init__(self):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.connect((HOST, PORT))
-        video_list = self.socket.recv(1024).decode().split('\n')
-        self.gui = VideoPlayerGUI(self, video_list)
+        try:
+            self.socket.connect((HOST, PORT))
+            video_list = self.socket.recv(1024).decode().split('\n')
+            self.gui = VideoPlayerGUI(self, video_list)
+        except ConnectionError as e:
+            print(f"Could not connect to server: {e}")
+            exit(1)  # Exit if no connection could be made
 
     def request_video(self, video_name):
-        # Send request for a specific video
-        # Handle RTP stream and RTCP feedback
-        print(f"Inside request_video, requesting {video_name}")
-        self.socket.sendall(video_name.encode())
-
-        # In a full-featured implementation, you'd handle RTSP controls here.
+        try:
+            self.socket.sendall(video_name.encode())
+        except BrokenPipeError as e:
+            print(f"Error sending video request: {e}")
+            # Handle the error (e.g., try to reconnect, notify the user, etc.)
 
 
 if __name__ == "__main__":
