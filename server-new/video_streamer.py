@@ -1,37 +1,85 @@
 # server/video_streamer.py
 import socket
 import os
-import io
-import time  # Import the time module
+import time
+from random import randint
 
+# Define constants for RTP packet size and header size
+RTP_PACKET_MAX_SIZE = 20480
+RTP_HEADER_SIZE = 12
 
 class VideoStreamer:
     def __init__(self, client_info, video_path):
         self.client_info = client_info  # Tuple (IP, port)
         self.video_path = video_path
         self.rtp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.streaming = False
+        self.session_id = self.generate_session_id()
+        self.sequence_num = 0
+        self.timestamp = 0
+
+    def generate_session_id(self):
+        # Generate a random, unique session ID
+        return randint(100000, 999999)
+
+    def setup_stream(self):
+        # Initialize variables before starting the stream
+        self.sequence_num = 0
+        self.timestamp = 0
+
+    def create_rtp_packet(self, payload):
+        """Create an RTP packet with the specified payload."""
+        version = 2
+        padding = 0
+        extension = 0
+        csrc_count = 0
+        marker = 0
+        payload_type = 26  # MJPEG video
+        sequence_num = self.sequence_num
+        timestamp = self.timestamp
+        ssrc = self.session_id
+
+        rtp_header = (
+            (version << 6 | padding << 5 | extension << 4 | csrc_count),
+            (marker << 7 | payload_type),
+            sequence_num,
+            timestamp,
+            ssrc,
+        )
+
+        rtp_header_bytes = bytearray()
+        for value in rtp_header:
+            rtp_header_bytes += value.to_bytes((value.bit_length() + 7) // 8, byteorder='big')
+
+        rtp_header_bytes = rtp_header_bytes.ljust(RTP_HEADER_SIZE, b'\x00')
+        return rtp_header_bytes + payload
 
     def stream_video(self):
-        """ Stream the video file to the client using RTP packets. """
         if not os.path.isfile(self.video_path):
             print(f"Video file {self.video_path} not found.")
             return
 
         print(f"Streaming {self.video_path} to {self.client_info}")
+        self.streaming = True
 
         with open(self.video_path, 'rb') as video_file:
-            while True:
-                # Read a chunk of the video file
-                data = video_file.read(20480)  # You might want to choose a different chunk size
+            while self.streaming:
+                data = video_file.read(RTP_PACKET_MAX_SIZE - RTP_HEADER_SIZE)
                 if not data:
-                    break  # End of file
+                    break
 
-                # Here you would normally need to wrap the data in an RTP packet.
-                # This is just sending raw video data, which is not a proper RTP stream.
+                self.sequence_num += 1
+                self.timestamp += 3600  # Increment as needed for your framerate
+                
+                rtp_packet = self.create_rtp_packet(data)
+                self.rtp_socket.sendto(rtp_packet, self.client_info)
+                time.sleep(1/30)  # Simulate 30 fps
 
-                self.rtp_socket.sendto(data, self.client_info)
+        self.rtp_socket.close()
 
-                # Simulate the frame rate
-                time.sleep(1/30)  # For 30 fps, wait 1/30 of a second
+    def pause_streaming(self):
+        self.streaming = False
 
+    def stop_streaming(self):
+        self.streaming = False
         self.rtp_socket.close()
