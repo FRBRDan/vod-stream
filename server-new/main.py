@@ -4,8 +4,7 @@ import threading
 
 def main():
     rtsp_server = RTSPPServer('localhost', 8554)
-    server_thread = threading.Thread(target=rtsp_server.accept_client)
-    server_thread.start()
+    rtsp_server.run_server()
 
 if __name__ == "__main__":
     main()
