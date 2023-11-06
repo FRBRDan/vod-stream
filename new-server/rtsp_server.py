@@ -1,8 +1,12 @@
 # server/rtsp_server.py
+from email.utils import formatdate
+from random import randint
+import random
 import socket
 import threading
 import logging
 from video_streamer import VideoStreamer
+from urllib.parse import urlparse
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -45,7 +49,7 @@ class RTSPPServer:
                 if not request:
                     break  # Client has disconnected
 
-                logging.info(f"Received request from {address}:\n{request}")
+                logging.info(f"[--->]Received request from {address}:\n{request}")
                 self.process_request(request, connection, address)
         except Exception as e:
             logging.error(f"Error handling client {address}: {e}")
@@ -58,39 +62,82 @@ class RTSPPServer:
     def process_request(self, request, connection, address):
         lines = request.split('\n')
         method = lines[0].split(' ')[0]
-        video_name = lines[0].split(' ')[1]
+        cseq = self.extract_cseq(request)
+        url = lines[0].split(' ')[1]
+        parsed_url = urlparse(url)
+        video_name = parsed_url.path.lstrip('/')
         video_path = self.get_video_path(video_name)
 
-        if method == "SETUP" and video_path:
-            self.clients[address] = {
-                'streamer': VideoStreamer(address, video_path),
-                'state': "INIT"
-            }
-            self.clients[address]['streamer'].setup_stream()
-            response = "RTSP/1.0 200 OK\nCSeq: 2\nSession: {}\n".format(self.clients[address]['streamer'].session_id)
+        print(f"Video name is {video_name} and path is {video_path}. Received CSeq: {cseq}")
+
+        if method == "OPTIONS":
+            response = f"RTSP/1.0 200 OK\nCSeq: {cseq}\nPublic: OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE\n"
             connection.send(response.encode())
+
+        elif method == "SETUP" and video_path:
+            logging.info("Processing SETUP request.")
+
+            # Extract the client's RTP and RTCP port numbers
+            client_rtp_port, client_rtcp_port = self.extract_client_ports(request)
+            
+            if client_rtp_port and client_rtp_port:
+                self.clients[address] = {
+                    'streamer': VideoStreamer(address, video_path, client_rtp_port, client_rtcp_port),
+                    'state': "INIT"
+                }
+                self.clients[address]['streamer'].setup_stream()
+
+                # Inside process_request method under SETUP:
+                server_rtp_port = randint(50000, 55000)
+                server_rtcp_port = server_rtp_port + 1
+                self.clients[address]['rtp_port'] = server_rtp_port
+                self.clients[address]['rtcp_port'] = server_rtcp_port
+                current_date = formatdate(timeval=None, localtime=False, usegmt=True)
+                ssrc_value = format(random.getrandbits(32), '08x')
+                response = f"RTSP/1.0 200 OK\nCSeq: {cseq}\nDate: {current_date}\nSession: {self.clients[address]['streamer'].session_id}\n"
+                response += f"Transport: RTP/AVP;unicast;client_port={client_rtp_port}-{client_rtcp_port};server_port={server_rtp_port}-{server_rtcp_port};ssrc={ssrc_value};mode=\"play\"\n"
+                print(f'[<---] Sending the response: to connection {connection}\n {response}')
+                connection.send(response.encode())
+
         elif method == "PLAY" and address in self.clients and self.clients[address]['state'] == "INIT":
             threading.Thread(target=self.clients[address]['streamer'].stream_video).start()
             self.clients[address]['state'] = "PLAYING"
-            response = "RTSP/1.0 200 OK\nCSeq: 3\nSession: {}\n".format(self.clients[address]['streamer'].session_id)
+            response = f"RTSP/1.0 200 OK\nCSeq: {cseq}\nSession: {self.clients[address]['streamer'].session_id}\n"
             connection.send(response.encode())
+
         elif method == "PAUSE" and address in self.clients and self.clients[address]['state'] == "PLAYING":
             self.clients[address]['streamer'].pause_streaming()
             self.clients[address]['state'] = "PAUSED"
-            response = "RTSP/1.0 200 OK\nCSeq: 4\nSession: {}\n".format(self.clients[address]['streamer'].session_id)
+            response = f"RTSP/1.0 200 OK\nCSeq: {cseq}\nSession: {self.clients[address]['streamer'].session_id}\n"
             connection.send(response.encode())
+
         elif method == "TEARDOWN" and address in self.clients:
             self.clients[address]['streamer'].stop_streaming()
             self.clients[address]['state'] = "STOPPED"
-            response = "RTSP/1.0 200 OK\nCSeq: 5\nSession: {}\n".format(self.clients[address]['streamer'].session_id)
+            response = f"RTSP/1.0 200 OK\nCSeq: {cseq}\nSession: {self.clients[address]['streamer'].session_id}\n"
             connection.send(response.encode())
+    
+    def extract_cseq(self, request_string):
+        for line in request_string.split("\n"):
+            if line.startswith("CSeq:"):
+                return int(line.split(":")[1].strip())
+        return None
+    
+    def extract_client_ports(self, request_string):
+        for line in request_string.split("\n"):
+            if line.startswith("Transport:"):
+                parts = line.split(";")
+                for part in parts:
+                    if "client_port" in part:
+                        return tuple(map(int, part.split("=")[1].split("-")))
+        return None, None
 
     def get_video_path(self, video_name):
         # Here you'd implement the logic to get the correct video path
         video_paths = {
-            "Movie 1": "/path/to/your/video/sample.mp4",
-            "Movie 2": "/path/to/your/video/test.mp4",
-            "Movie 3": "/path/to/your/video/test2.mp4",
+            "movie1": "videos/sample.mp4",
+            "movie2": "videos/test.mp4",
+            "movie3": "videos/test2.mp4",
         }
         return video_paths.get(video_name, "")
 

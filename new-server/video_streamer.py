@@ -3,20 +3,26 @@ import socket
 import os
 import time
 from random import randint
+import logging
 
 # Define constants for RTP packet size and header size
 RTP_PACKET_MAX_SIZE = 20480
 RTP_HEADER_SIZE = 12
 
+
 class VideoStreamer:
-    def __init__(self, client_info, video_path):
+    def __init__(self, client_info, video_path, client_rtp_port, client_rtcp_port):
+        logging.info(f'Initializing VideoStreamer with {client_info} and {video_path}.')
         self.client_info = client_info  # Tuple (IP, port)
         self.video_path = video_path
+        self.client_rtp_port = client_rtp_port
+        self.client_rtcp_port = client_rtcp_port
         self.rtp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.streaming = False
         self.session_id = self.generate_session_id()
         self.sequence_num = 0
         self.timestamp = 0
+        logging.info(f'Generated session ID {self.session_id}.')
 
     def generate_session_id(self):
         # Generate a random, unique session ID
@@ -24,6 +30,7 @@ class VideoStreamer:
 
     def setup_stream(self):
         # Initialize variables before starting the stream
+        logging.info(f'Initializing variables before the stream (setup_stream).')
         self.sequence_num = 0
         self.timestamp = 0
 
@@ -55,6 +62,7 @@ class VideoStreamer:
         return rtp_header_bytes + payload
 
     def stream_video(self):
+        logging.info(f'About to stream video {self.video_path}..')
         if not os.path.isfile(self.video_path):
             print(f"Video file {self.video_path} not found.")
             return
@@ -72,7 +80,7 @@ class VideoStreamer:
                 self.timestamp += 3600  # Increment as needed for your framerate
                 
                 rtp_packet = self.create_rtp_packet(data)
-                self.rtp_socket.sendto(rtp_packet, self.client_info)
+                self.rtp_socket.sendto(rtp_packet, (self.client_info[0], self.client_rtp_port))
                 time.sleep(1/30)  # Simulate 30 fps
 
         self.rtp_socket.close()

@@ -108,7 +108,7 @@ class GUI(QMainWindow):
         video_url = self.get_video_url(self.video_list_widget.currentItem().text())
         print(video_url)
         if video_url:
-            Media = self.vlc_instance.media_new(video_url)
+            Media = self.vlc_instance.media_new(f'rtsp://localhost:8554/movie2')
             self.media_player.set_media(Media)
             self.media_player.play()
 
@@ -117,9 +117,9 @@ class GUI(QMainWindow):
 
     def get_video_url(self, video_name):
         video_urls = {
-            "Movie 1": "videos/sample.mp4",
-            "Movie 2": "videos/test.mp4",
-            "Movie 3": "videos/test2.mp4",
+            "Movie 1": "rtsp://localhost:8554/sample.mp4",
+            "Movie 2": "rtsp://localhost:8554/test.mp4",
+            "Movie 3": "rtsp://localhost:8554/test2.mp4",
         }
         return video_urls.get(video_name)
 
