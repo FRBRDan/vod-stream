@@ -88,9 +88,9 @@ class RTSPPServer:
     def get_video_path(self, video_name):
         # Here you'd implement the logic to get the correct video path
         video_paths = {
-            "movie1": "/path/to/movie1.mp4",
-            "movie2": "/path/to/movie2.mp4",
-            "movie3": "/path/to/movie3.mp4",
+            "Movie 1": "/path/to/your/video/sample.mp4",
+            "Movie 2": "/path/to/your/video/test.mp4",
+            "Movie 3": "/path/to/your/video/test2.mp4",
         }
         return video_paths.get(video_name, "")
 

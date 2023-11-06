@@ -106,6 +106,7 @@ class GUI(QMainWindow):
 
     def play_video(self):
         video_url = self.get_video_url(self.video_list_widget.currentItem().text())
+        print(video_url)
         if video_url:
             Media = self.vlc_instance.media_new(video_url)
             self.media_player.set_media(Media)
@@ -116,9 +117,9 @@ class GUI(QMainWindow):
 
     def get_video_url(self, video_name):
         video_urls = {
-            "movie1": "/path/to/movie1.mp4",
-            "movie2": "/path/to/movie2.mp4",
-            "movie3": "/path/to/movie3.mp4",
+            "Movie 1": "videos/sample.mp4",
+            "Movie 2": "videos/test.mp4",
+            "Movie 3": "videos/test2.mp4",
         }
         return video_urls.get(video_name)
 
