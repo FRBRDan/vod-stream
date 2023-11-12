@@ -108,7 +108,7 @@ class GUI(QMainWindow):
         video_url = self.get_video_url(self.video_list_widget.currentItem().text())
         print(video_url)
         if video_url:
-            Media = self.vlc_instance.media_new(f'rtsp://localhost:8554/movie2')
+            Media = self.vlc_instance.media_new(f'rtsp://localhost:8554/movie1')
             self.media_player.set_media(Media)
             self.media_player.play()
 

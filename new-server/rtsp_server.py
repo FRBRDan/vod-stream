@@ -54,25 +54,40 @@ class RTSPPServer:
         except Exception as e:
             logging.error(f"Error handling client {address}: {e}")
         finally:
-            if address in self.clients:
-                self.clients[address]['streamer'].stop_streaming()
-                del self.clients[address]
-            connection.close()
+            if address not in self.clients:
+                connection.close()
 
     def process_request(self, request, connection, address):
-        lines = request.split('\n')
+        lines = request.split('\r\n')
         method = lines[0].split(' ')[0]
         cseq = self.extract_cseq(request)
+    
+        # Extract the URL and portentially a trackID
         url = lines[0].split(' ')[1]
-        parsed_url = urlparse(url)
-        video_name = parsed_url.path.lstrip('/')
-        video_path = self.get_video_path(video_name)
+        url_parts = url.split('/')
+        print('Url Parts: ', url_parts)
+        video_name = url_parts[1] if len(url_parts) > 1 else None  # Assuming the format [host]:[port]/[video_name]/trackID=[id]
+        track_id = self.extract_track_id('/'.join(url_parts[1:])) if video_name else None
 
-        print(f"Video name is {video_name} and path is {video_path}. Received CSeq: {cseq}")
+        video_path = self.get_video_path(video_name) if video_name else None
+
+        print(f"Video name is {video_name}, Video Path is {video_path}, Track ID is {track_id}, and path is {video_path}. Received CSeq: {cseq}")
 
         if method == "OPTIONS":
-            response = f"RTSP/1.0 200 OK\nCSeq: {cseq}\nPublic: OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE\n"
+            response = f"RTSP/1.0 200 OK\r\nServer: VLC/3.0.9.2\r\nContent-Length: 0\r\nCSeq: {cseq}\r\nPublic: DESCRIBE,SETUP,TEARDOWN,PLAY,PAUSE,GET_PARAMETER\r\n\r\n"
             connection.send(response.encode())
+
+        elif method == "DESCRIBE":
+            logging.info("Processing DESCRIBE request.")
+            video_name = url_parts[-1] # Fix
+            sdp = self.create_sdp_description(address, video_name)
+            current_date = formatdate(timeval=None, localtime=False, usegmt=True)
+            response = f"RTSP/1.0 200 OK\r\nCSeq: {cseq}\nDate: {current_date}\r\n"
+            response += f"Content-Base: {self.host}:{self.port}/{video_name}/\r\n"
+            response += f"Content-Type: application/sdp\r\n"
+            response += f"Content-Length: {len(sdp)}\r\n\r\n{sdp}"
+            connection.send(response.encode())
+
 
         elif method == "SETUP" and video_path:
             logging.info("Processing SETUP request.")
@@ -94,28 +109,31 @@ class RTSPPServer:
                 self.clients[address]['rtcp_port'] = server_rtcp_port
                 current_date = formatdate(timeval=None, localtime=False, usegmt=True)
                 ssrc_value = format(random.getrandbits(32), '08x')
-                response = f"RTSP/1.0 200 OK\nCSeq: {cseq}\nDate: {current_date}\nSession: {self.clients[address]['streamer'].session_id}\n"
-                response += f"Transport: RTP/AVP;unicast;client_port={client_rtp_port}-{client_rtcp_port};server_port={server_rtp_port}-{server_rtcp_port};ssrc={ssrc_value};mode=\"play\"\n"
+                response = f"RTSP/1.0 200 OK\r\nCSeq: {cseq}\r\nDate: {current_date}\r\nSession: {self.clients[address]['streamer'].session_id}\r\n"
+                response += f"Transport: RTP/AVP;unicast;client_port={client_rtp_port}-{client_rtcp_port};server_port={server_rtp_port}-{server_rtcp_port};ssrc={ssrc_value};mode=\"play\"\r\n\r\n"
                 print(f'[<---] Sending the response: to connection {connection}\n {response}')
                 connection.send(response.encode())
 
         elif method == "PLAY" and address in self.clients and self.clients[address]['state'] == "INIT":
             threading.Thread(target=self.clients[address]['streamer'].stream_video).start()
             self.clients[address]['state'] = "PLAYING"
-            response = f"RTSP/1.0 200 OK\nCSeq: {cseq}\nSession: {self.clients[address]['streamer'].session_id}\n"
+            response = f"RTSP/1.0 200 OK\r\nCSeq: {cseq}\r\nSession: {self.clients[address]['streamer'].session_id}\r\n\r\n"
             connection.send(response.encode())
 
         elif method == "PAUSE" and address in self.clients and self.clients[address]['state'] == "PLAYING":
             self.clients[address]['streamer'].pause_streaming()
             self.clients[address]['state'] = "PAUSED"
-            response = f"RTSP/1.0 200 OK\nCSeq: {cseq}\nSession: {self.clients[address]['streamer'].session_id}\n"
+            response = f"RTSP/1.0 200 OK\r\nCSeq: {cseq}\r\nSession: {self.clients[address]['streamer'].session_id}\r\n\r\n"
             connection.send(response.encode())
 
         elif method == "TEARDOWN" and address in self.clients:
             self.clients[address]['streamer'].stop_streaming()
             self.clients[address]['state'] = "STOPPED"
-            response = f"RTSP/1.0 200 OK\nCSeq: {cseq}\nSession: {self.clients[address]['streamer'].session_id}\n"
+            response = f"RTSP/1.0 200 OK\r\nCSeq: {cseq}\r\nSession: {self.clients[address]['streamer'].session_id}\r\n\r\n"
             connection.send(response.encode())
+
+            connection.close()
+            del self.clients[address]
     
     def extract_cseq(self, request_string):
         for line in request_string.split("\n"):
@@ -140,6 +158,27 @@ class RTSPPServer:
             "movie3": "videos/test2.mp4",
         }
         return video_paths.get(video_name, "")
+
+    def create_sdp_description(self, address, video_name):
+        sdp = "v=0\r\n"
+        sdp += "o=- 0 0 IN IP4 " + self.host + "\r\n"
+        sdp += "s=RTSP Server\r\n"
+        sdp += "c=IN IP4 " + address[0] + "\r\n"
+        sdp += "t=0 0\r\n"
+        sdp += "m=video 0 RTP/AVP 96\r\n"
+        sdp += "a=rtpmap:96 H264/90000\r\n"
+        sdp += "a=control:trackID=0\r\n"
+        # Add more media descriptions as needed
+        return sdp
+    
+    def extract_track_id(self, url_path):
+        parts = url_path.split('/')
+        for part in parts:
+            if 'trackID=' in part:
+                return part.split('=')[1]
+        return None
+
+
 
 # Main entry point of the RTSP server
 if __name__ == "__main__":
