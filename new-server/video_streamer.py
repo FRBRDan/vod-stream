@@ -41,7 +41,7 @@ class VideoStreamer:
         extension = 0
         csrc_count = 0
         marker = 0
-        payload_type = 26  # MJPEG video
+        payload_type = 96  # H264 encoded
         sequence_num = self.sequence_num
         timestamp = self.timestamp
         ssrc = self.session_id
@@ -77,7 +77,7 @@ class VideoStreamer:
                     break
 
                 self.sequence_num += 1
-                self.timestamp += 3600  # Increment as needed for your framerate
+                self.timestamp += 3000  # 90K / 30 for 30 FPS video
                 
                 rtp_packet = self.create_rtp_packet(data)
                 self.rtp_socket.sendto(rtp_packet, (self.client_info[0], self.client_rtp_port))
