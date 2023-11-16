@@ -33,6 +33,12 @@ Before running the applications, install the required third-party libraries usin
 pip3 install python-vlc PyQt5
 ```
 
+or
+
+```
+sudo apt-get install python3-pyqt5
+```
+
 
 *Make sure VLC Media Player is installed on your system as the vlc Python library requires it to function properly.*
 
