@@ -64,12 +64,12 @@ class RTSPPServer:
     
         # Extract the URL and portentially a trackID
         url = lines[0].split(' ')[1]
-        url_parts = url.split('/')
+        url_parts = request.split(' ')[1].split('/')  # Splitting the request line and then the URL
         print('Url Parts: ', url_parts)
-        video_name = url_parts[1] if len(url_parts) > 1 else None  # Assuming the format [host]:[port]/[video_name]/trackID=[id]
+        video_name = url_parts[-2]
         track_id = self.extract_track_id('/'.join(url_parts[1:])) if video_name else None
 
-        video_path = self.get_video_path(video_name) if video_name else None
+        video_path = self.get_video_path(video_name)
 
         print(f"Video name is {video_name}, Video Path is {video_path}, Track ID is {track_id}, and path is {video_path}. Received CSeq: {cseq}")
 
@@ -153,9 +153,9 @@ class RTSPPServer:
     def get_video_path(self, video_name):
         # Here you'd implement the logic to get the correct video path
         video_paths = {
-            "movie1": "videos/sample.mp4",
-            "movie2": "videos/test.mp4",
-            "movie3": "videos/test2.mp4",
+            "sample.mp4": "videos/sample.mp4",
+            "test.mp4": "videos/test.mp4",
+            "test2.mp4": "videos/test2.mp4",
         }
         return video_paths.get(video_name, "")
 
