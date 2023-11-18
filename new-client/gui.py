@@ -54,8 +54,9 @@ class GUI(QMainWindow):
         self.layout.addLayout(self.buttons_layout)
 
         # Create and add the play and stop buttons with icons
-        self.play_button = QPushButton(QIcon('play_icon.png'), 'Play')
-        self.stop_button = QPushButton(QIcon('stop_icon.png'), 'Stop')
+        self.play_button = QPushButton('Play')  # If icon file is not available
+        self.stop_button = QPushButton('Stop')  # If icon file is not available
+        self.pause_button = QPushButton('Pause')  # If icon file is not available
         self.buttons_layout.addWidget(self.play_button)
         self.buttons_layout.addWidget(self.stop_button)
 
@@ -108,9 +109,10 @@ class GUI(QMainWindow):
         video_url = self.get_video_url(self.video_list_widget.currentItem().text())
         print(video_url)
         if video_url:
-            Media = self.vlc_instance.media_new(f'rtsp://localhost:8554/movie1')
+            Media = self.vlc_instance.media_new(video_url)  # Use dynamic URL
             self.media_player.set_media(Media)
             self.media_player.play()
+
 
     def stop_video(self):
         self.media_player.stop()

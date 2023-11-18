@@ -72,7 +72,6 @@ class VideoStreamer:
         # Dynamically set the RTP streaming address
         rtp_address = f'rtp://{self.client_info[0]}:{self.client_rtp_port}'
 
-        # Command to use FFmpeg for streaming
         command = [
             'ffmpeg', '-re', '-i', self.video_path,
             '-vcodec', 'libx264', '-an',
@@ -80,15 +79,21 @@ class VideoStreamer:
         ]
 
         try:
-            # Open FFmpeg as a subprocess
-            ffmpeg_process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            ffmpeg_process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            self.streaming = True
 
             while self.streaming:
                 output = ffmpeg_process.stdout.readline()
-                if output == b'' and ffmpeg_process.poll() is not None:
-                    break
                 if output:
-                    logging.info(output.strip().decode())
+                    logging.info(output.strip())
+
+                error = ffmpeg_process.stderr.readline()
+                if error:
+                    logging.error(error.strip())
+
+                if ffmpeg_process.poll() is not None:
+                    logging.error("FFmpeg process ended unexpectedly.")
+                    break
 
         except Exception as e:
             logging.error(f"Error streaming video: {e}")
