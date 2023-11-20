@@ -106,16 +106,23 @@ class GUI(QMainWindow):
                 self.status_bar.showMessage(f"Failed to set video output: {e}")
 
     def play_video(self):
-        video_url = self.get_video_url(self.video_list_widget.currentItem().text())
-        print(video_url)
-        if video_url:
-            Media = self.vlc_instance.media_new(video_url)  # Use dynamic URL
-            self.media_player.set_media(Media)
-            self.media_player.play()
+        try:
+            video_url = self.get_video_url(self.video_list_widget.currentItem().text())
+            print(video_url)
+            if video_url:
+                Media = self.vlc_instance.media_new(video_url)  # Use dynamic URL
+                self.media_player.set_media(Media)
+                self.media_player.play()
+        except Exception as e:
+            print(f"Error in play_video: {e}")
 
 
     def stop_video(self):
-        self.media_player.stop()
+        try:
+            self.media_player.stop()
+        except Exception as e:
+            print(f"Error in stop_video: {e}")
+
 
     def get_video_url(self, video_name):
         video_urls = {

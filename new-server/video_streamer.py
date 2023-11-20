@@ -64,10 +64,10 @@ class VideoStreamer:
         return rtp_header_bytes + payload
 
     def stream_video(self):
-        logging.info(f'About to stream video {self.video_path} to {self.client_info}')
         if not os.path.isfile(self.video_path):
             logging.error(f"Video file {self.video_path} not found.")
             return
+
 
         # Dynamically set the RTP streaming address
         rtp_address = f'rtp://{self.client_info[0]}:{self.client_rtp_port}'

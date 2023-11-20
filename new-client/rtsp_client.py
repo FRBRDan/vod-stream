@@ -12,29 +12,35 @@ class RTSPClient:
         try:
             self.rtsp_socket.connect((self.server_ip, self.server_port))
             print("Connected to RTSP server.")
-        except ConnectionRefusedError:
-            print("Connection to RTSP server failed.")
+        except Exception as e:
+            print(f"Connection to RTSP server failed: {e}")
 
     def send_request(self, request_type, video_name):
         if request_type.upper() not in ["SETUP", "PLAY", "PAUSE", "TEARDOWN"]:
             print("Unknown RTSP request type.")
             return
-        
+
         # Construct the RTSP request
         request = f"{request_type} {video_name} RTSP/1.0\nCSeq: 1\n"
         if self.session_id:
             request += f"Session: {self.session_id}\n"
 
-        # Send the RTSP request
-        self.rtsp_socket.send(request.encode())
-        
-        # Receive the server's response
-        response = self.rtsp_socket.recv(1024)
-        print("Server response:", response.decode())
+        try:
+            # Send the RTSP request
+            self.rtsp_socket.send(request.encode())
 
-        # Parse the session ID from the server's response
-        if 'Session' in response.decode():
-            self.session_id = response.decode().split('Session: ')[1].split('\n')[0]
+            # Receive the server's response
+            response = self.rtsp_socket.recv(1024)
+            print("Server response:", response.decode())
+
+            # Parse the session ID from the server's response
+            if 'Session' in response.decode():
+                self.session_id = response.decode().split('Session: ')[1].split('\n')[0]
+
+        except socket.error as e:
+            print(f"Socket error: {e}")
+        except Exception as e:
+            print(f"Error sending RTSP request: {e}")
 
     def teardown(self):
         if self.session_id:
