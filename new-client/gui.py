@@ -123,6 +123,10 @@ class GUI(QMainWindow):
         except Exception as e:
             print(f"Error in stop_video: {e}")
 
+    def closeEvent(self, event):
+        # Override the close event to handle proper teardown
+        self.rtsp_client.teardown()
+        super().closeEvent(event)
 
     def get_video_url(self, video_name):
         video_urls = {

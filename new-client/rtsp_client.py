@@ -46,3 +46,4 @@ class RTSPClient:
         if self.session_id:
             self.send_request("TEARDOWN", "")
             self.rtsp_socket.close()
+            print(f"RTSP session {self.session_id} torn down.")
