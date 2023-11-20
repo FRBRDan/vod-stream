@@ -1,5 +1,6 @@
 # server/rtsp_server.py
 from email.utils import formatdate
+import os
 from random import randint
 import random
 import socket
@@ -151,13 +152,13 @@ class RTSPPServer:
         return None, None
 
     def get_video_path(self, video_name):
-        # Here you'd implement the logic to get the correct video path
-        video_paths = {
-            "sample.mp4": "videos/sample.mp4",
-            "test.mp4": "videos/test.mp4",
-            "test2.mp4": "videos/test2.mp4",
-        }
-        return video_paths.get(video_name, "")
+        # Dynamically find the video path in the videos directory
+        videos_dir = 'videos'
+        for root, dirs, files in os.walk(videos_dir):
+            for file in files:
+                if file == video_name:
+                    return os.path.join(root, file)
+        return ""  # Return an empty string if the video is not found
 
     def create_sdp_description(self, address, video_name):
         sdp = "v=0\r\n"
