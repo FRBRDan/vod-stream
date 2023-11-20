@@ -111,3 +111,5 @@ class VideoStreamer:
     def stop_streaming(self):
         self.streaming = False
         self.rtp_socket.close()
+        # Implement basic RTCP teardown logic here
+        logging.info(f"RTCP: Teardown session {self.session_id} with client {self.client_info}")
