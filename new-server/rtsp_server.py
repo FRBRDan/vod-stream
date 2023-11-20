@@ -55,7 +55,9 @@ class RTSPPServer:
         except Exception as e:
             logging.error(f"Error handling client {address}: {e}")
         finally:
-            if address not in self.clients:
+            if address in self.clients:
+                self.clients[address]['streamer'].stop_streaming()
+                del self.clients[address]
                 connection.close()
 
     def process_request(self, request, connection, address):
