@@ -4,6 +4,8 @@ import os
 import time
 from random import randint
 import logging
+import subprocess
+
 
 # Define constants for RTP packet size and header size
 RTP_PACKET_MAX_SIZE = 20480
@@ -62,28 +64,46 @@ class VideoStreamer:
         return rtp_header_bytes + payload
 
     def stream_video(self):
-        logging.info(f'About to stream video {self.video_path}..')
         if not os.path.isfile(self.video_path):
-            print(f"Video file {self.video_path} not found.")
+            logging.error(f"Video file {self.video_path} not found.")
             return
 
-        print(f"Streaming {self.video_path} to {self.client_info}")
-        self.streaming = True
 
-        with open(self.video_path, 'rb') as video_file:
+        # Dynamically set the RTP streaming address
+        rtp_address = f'rtp://{self.client_info[0]}:{self.client_rtp_port}'
+
+        command = [
+            'ffmpeg', '-re', '-i', self.video_path,
+            '-vcodec', 'libx264', '-an',
+            '-f', 'rtp', rtp_address
+        ]
+
+        try:
+            ffmpeg_process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            self.streaming = True
+
             while self.streaming:
-                data = video_file.read(RTP_PACKET_MAX_SIZE - RTP_HEADER_SIZE)
-                if not data:
+                output = ffmpeg_process.stdout.readline()
+                if output:
+                    logging.info(output.strip())
+
+                error = ffmpeg_process.stderr.readline()
+                if error:
+                    logging.error(error.strip())
+
+                if ffmpeg_process.poll() is not None:
+                    logging.error("FFmpeg process ended unexpectedly.")
                     break
 
-                self.sequence_num += 1
-                self.timestamp += 3000  # 90K / 30 for 30 FPS video
-                
-                rtp_packet = self.create_rtp_packet(data)
-                self.rtp_socket.sendto(rtp_packet, (self.client_info[0], self.client_rtp_port))
-                time.sleep(1/30)  # Simulate 30 fps
+        except Exception as e:
+            logging.error(f"Error streaming video: {e}")
 
-        self.rtp_socket.close()
+        finally:
+            self.streaming = False
+            if ffmpeg_process:
+                ffmpeg_process.terminate()
+                ffmpeg_process.wait()
+                logging.info("FFmpeg process terminated.")
 
     def pause_streaming(self):
         self.streaming = False
@@ -91,3 +111,5 @@ class VideoStreamer:
     def stop_streaming(self):
         self.streaming = False
         self.rtp_socket.close()
+        # Implement basic RTCP teardown logic here
+        logging.info(f"RTCP: Teardown session {self.session_id} with client {self.client_info}")

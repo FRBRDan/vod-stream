@@ -54,8 +54,9 @@ class GUI(QMainWindow):
         self.layout.addLayout(self.buttons_layout)
 
         # Create and add the play and stop buttons with icons
-        self.play_button = QPushButton(QIcon('play_icon.png'), 'Play')
-        self.stop_button = QPushButton(QIcon('stop_icon.png'), 'Stop')
+        self.play_button = QPushButton('Play')  # If icon file is not available
+        self.stop_button = QPushButton('Stop')  # If icon file is not available
+        self.pause_button = QPushButton('Pause')  # If icon file is not available
         self.buttons_layout.addWidget(self.play_button)
         self.buttons_layout.addWidget(self.stop_button)
 
@@ -105,15 +106,27 @@ class GUI(QMainWindow):
                 self.status_bar.showMessage(f"Failed to set video output: {e}")
 
     def play_video(self):
-        video_url = self.get_video_url(self.video_list_widget.currentItem().text())
-        print(video_url)
-        if video_url:
-            Media = self.vlc_instance.media_new(f'rtsp://localhost:8554/movie1')
-            self.media_player.set_media(Media)
-            self.media_player.play()
+        try:
+            video_url = self.get_video_url(self.video_list_widget.currentItem().text())
+            print(video_url)
+            if video_url:
+                Media = self.vlc_instance.media_new(video_url)  # Use dynamic URL
+                self.media_player.set_media(Media)
+                self.media_player.play()
+        except Exception as e:
+            print(f"Error in play_video: {e}")
+
 
     def stop_video(self):
-        self.media_player.stop()
+        try:
+            self.media_player.stop()
+        except Exception as e:
+            print(f"Error in stop_video: {e}")
+
+    def closeEvent(self, event):
+        # Override the close event to handle proper teardown
+        self.rtsp_client.teardown()
+        super().closeEvent(event)
 
     def get_video_url(self, video_name):
         video_urls = {

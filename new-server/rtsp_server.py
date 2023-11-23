@@ -1,5 +1,6 @@
 # server/rtsp_server.py
 from email.utils import formatdate
+import os
 from random import randint
 import random
 import socket
@@ -54,7 +55,9 @@ class RTSPPServer:
         except Exception as e:
             logging.error(f"Error handling client {address}: {e}")
         finally:
-            if address not in self.clients:
+            if address in self.clients:
+                self.clients[address]['streamer'].stop_streaming()
+                del self.clients[address]
                 connection.close()
 
     def process_request(self, request, connection, address):
@@ -64,12 +67,12 @@ class RTSPPServer:
     
         # Extract the URL and portentially a trackID
         url = lines[0].split(' ')[1]
-        url_parts = url.split('/')
+        url_parts = request.split(' ')[1].split('/')  # Splitting the request line and then the URL
         print('Url Parts: ', url_parts)
-        video_name = url_parts[1] if len(url_parts) > 1 else None  # Assuming the format [host]:[port]/[video_name]/trackID=[id]
+        video_name = url_parts[-2]
         track_id = self.extract_track_id('/'.join(url_parts[1:])) if video_name else None
 
-        video_path = self.get_video_path(video_name) if video_name else None
+        video_path = self.get_video_path(video_name)
 
         print(f"Video name is {video_name}, Video Path is {video_path}, Track ID is {track_id}, and path is {video_path}. Received CSeq: {cseq}")
 
@@ -151,13 +154,13 @@ class RTSPPServer:
         return None, None
 
     def get_video_path(self, video_name):
-        # Here you'd implement the logic to get the correct video path
-        video_paths = {
-            "movie1": "videos/sample.mp4",
-            "movie2": "videos/test.mp4",
-            "movie3": "videos/test2.mp4",
-        }
-        return video_paths.get(video_name, "")
+        # Dynamically find the video path in the videos directory
+        videos_dir = 'videos'
+        for root, dirs, files in os.walk(videos_dir):
+            for file in files:
+                if file == video_name:
+                    return os.path.join(root, file)
+        return ""  # Return an empty string if the video is not found
 
     def create_sdp_description(self, address, video_name):
         sdp = "v=0\r\n"
