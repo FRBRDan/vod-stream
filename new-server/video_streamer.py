@@ -35,7 +35,7 @@ class VideoStreamer:
         logging.info(f'Initializing variables before the stream (setup_stream).')
         self.sequence_num = 0
         self.timestamp = 0
-
+    
     def create_rtp_packet(self, payload):
         """Create an RTP packet with the specified payload."""
         version = 2

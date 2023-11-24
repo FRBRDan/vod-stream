@@ -8,6 +8,8 @@ import threading
 import logging
 from video_streamer import VideoStreamer
 from urllib.parse import urlparse
+import base64
+import av
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -47,7 +49,7 @@ class RTSPPServer:
         try:
             while True:
                 request = connection.recv(1024).decode()
-                if not request:
+                if not request: # Todo: When can this ever happen?
                     break  # Client has disconnected
 
                 logging.info(f"[--->]Received request from {address}:\n{request}")
@@ -75,9 +77,11 @@ class RTSPPServer:
         video_path = self.get_video_path(video_name)
 
         print(f"Video name is {video_name}, Video Path is {video_path}, Track ID is {track_id}, and path is {video_path}. Received CSeq: {cseq}")
+#,GET_PARAMETER
 
+        # Todo: Deal with GET_PARAMETER.
         if method == "OPTIONS":
-            response = f"RTSP/1.0 200 OK\r\nServer: VLC/3.0.9.2\r\nContent-Length: 0\r\nCSeq: {cseq}\r\nPublic: DESCRIBE,SETUP,TEARDOWN,PLAY,PAUSE,GET_PARAMETER\r\n\r\n"
+            response = f"RTSP/1.0 200 OK\r\nServer: VLC/3.0.9.2\r\nContent-Length: 0\r\nCSeq: {cseq}\r\nPublic: DESCRIBE,SETUP,TEARDOWN,PLAY,PAUSE\r\n\r\n"
             connection.send(response.encode())
 
         elif method == "DESCRIBE":
@@ -161,8 +165,51 @@ class RTSPPServer:
                 if file == video_name:
                     return os.path.join(root, file)
         return ""  # Return an empty string if the video is not found
+    
+    def get_sps_pps(self, video_path):
+        container = av.open(video_path)
+        video_stream = next(s for s in container.streams if s.type == 'video')
+        codec_context = video_stream.codec_context
+
+        extradata = codec_context.extradata
+        if not extradata or extradata[0] != 1:
+            return None, None
+
+        # The extradata format: [1 byte for NALU length size] [1 byte for the number of SPS NALUs] [SPS NALUs] [1 byte for the number of PPS NALUs] [PPS NALUs]
+        nalu_length_size = extradata[4] & 0x03 + 1  # last two bits
+        num_sps = extradata[5] & 0x1f  # last 5 bits
+        pos = 6
+        sps = None
+        pps = None
+
+        for _ in range(num_sps):
+            sps_length = int.from_bytes(extradata[pos:pos+2], 'big')
+            pos += 2
+            sps = extradata[pos:pos+sps_length]
+            pos += sps_length
+
+        num_pps = extradata[pos]
+        pos += 1
+
+        for _ in range(num_pps):
+            pps_length = int.from_bytes(extradata[pos:pos+2], 'big')
+            pos += 2
+            pps = extradata[pos:pos+pps_length]
+
+        if sps is not None and pps is not None:
+            return base64.b64encode(sps).decode(), base64.b64encode(pps).decode()
+        else:
+            return None, None
 
     def create_sdp_description(self, address, video_name):
+        video_path = self.get_video_path('test2.mp4') # Todo: Fix video_name to be consistent and adjust here.
+        print(f'Creating SDP description. Video Path: {video_path}')
+        sps, pps = self.get_sps_pps(video_path)
+        print(f"SPS: {sps} PPS: {pps}")
+        # if not sps or not pps:
+        #     return "Error: Unable to extract SPS and PPS from video."
+        
+
         sdp = "v=0\r\n"
         sdp += "o=- 0 0 IN IP4 " + self.host + "\r\n"
         sdp += "s=RTSP Server\r\n"
@@ -170,8 +217,9 @@ class RTSPPServer:
         sdp += "t=0 0\r\n"
         sdp += "m=video 0 RTP/AVP 96\r\n"
         sdp += "a=rtpmap:96 H264/90000\r\n"
+        sdp += f"a=fmtp:96 packetization-mode=1;profile-level-id=42e01f;sprop-parameter-sets={sps},{pps};\r\n"
         sdp += "a=control:trackID=0\r\n"
-        # Add more media descriptions as needed
+        # Add more media descriptions as needed (audio)
         return sdp
     
     def extract_track_id(self, url_path):
