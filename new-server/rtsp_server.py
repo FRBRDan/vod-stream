@@ -76,7 +76,7 @@ class RTSPPServer:
 
         video_path = self.get_video_path(video_name)
 
-        print(f"Video name is {video_name}, Video Path is {video_path}, Track ID is {track_id}, and path is {video_path}. Received CSeq: {cseq}")
+        print(f"Video name is {video_name}, Video Path is {video_path}, Track ID is {track_id} type({type(track_id)}), and path is {video_path}. Received CSeq: {cseq}")
 #,GET_PARAMETER
 
         # Todo: Deal with GET_PARAMETER.
@@ -96,35 +96,72 @@ class RTSPPServer:
             connection.send(response.encode())
 
 
+        # elif method == "SETUP" and video_path:
+        #     logging.info("Processing SETUP request.")
+
+        #     # Extract the client's RTP and RTCP port numbers
+        #     client_rtp_port, client_rtcp_port = self.extract_client_ports(request)
+            
+        #     if client_rtp_port and client_rtp_port:
+        #         self.clients[address] = {
+        #             'streamer': VideoStreamer(address, video_path, client_rtp_port, client_rtcp_port),
+        #             'state': "INIT"
+        #         }
+        #         self.clients[address]['streamer'].setup_stream()
+
+        #         # Inside process_request method under SETUP:
+        #         server_rtp_port = randint(50000, 55000)
+        #         server_rtcp_port = server_rtp_port + 1
+        #         self.clients[address]['rtp_port'] = server_rtp_port
+        #         self.clients[address]['rtcp_port'] = server_rtcp_port
+        #         current_date = formatdate(timeval=None, localtime=False, usegmt=True)
+        #         ssrc_value = format(random.getrandbits(32), '08x')
+        #         response = f"RTSP/1.0 200 OK\r\nCSeq: {cseq}\r\nDate: {current_date}\r\nSession: {self.clients[address]['streamer'].session_id}\r\n"
+        #         response += f"Transport: RTP/AVP;unicast;client_port={client_rtp_port}-{client_rtcp_port};server_port={server_rtp_port}-{server_rtcp_port};ssrc={ssrc_value};mode=\"play\"\r\n\r\n"
+        #         print(f'[<---] Sending the response: to connection {connection}\n {response}')
+        #         connection.send(response.encode())
+
         elif method == "SETUP" and video_path:
-            logging.info("Processing SETUP request.")
+            logging.info("Processing MODIFIED SETUP request.")
 
             # Extract the client's RTP and RTCP port numbers
             client_rtp_port, client_rtcp_port = self.extract_client_ports(request)
             
             if client_rtp_port and client_rtp_port:
-                self.clients[address] = {
-                    'streamer': VideoStreamer(address, video_path, client_rtp_port, client_rtcp_port),
-                    'state': "INIT"
-                }
-                self.clients[address]['streamer'].setup_stream()
+                if address not in self.clients:
+                    print(f'Adding address {address} to clients hashmap..')
+                    self.clients[address] = {
+                        'session_id': randint(100000, 999999),
+                        'streamers': {},
+                        'state': "INIT"
+                    }
+#VideoStreamer(address, video_path, client_rtp_port, client_rtcp_port),
+
+                # Create a new streamer for each track
+                self.clients[address]['streamers'][track_id] = VideoStreamer(address, video_path, client_rtp_port, client_rtcp_port, track_id)
+                self.clients[address]['streamers'][track_id].setup_stream()
 
                 # Inside process_request method under SETUP:
+                # Ports are generated but not used because FFmpeg deals with this
                 server_rtp_port = randint(50000, 55000)
                 server_rtcp_port = server_rtp_port + 1
-                self.clients[address]['rtp_port'] = server_rtp_port
-                self.clients[address]['rtcp_port'] = server_rtcp_port
                 current_date = formatdate(timeval=None, localtime=False, usegmt=True)
                 ssrc_value = format(random.getrandbits(32), '08x')
-                response = f"RTSP/1.0 200 OK\r\nCSeq: {cseq}\r\nDate: {current_date}\r\nSession: {self.clients[address]['streamer'].session_id}\r\n"
+                response = f"RTSP/1.0 200 OK\r\nCSeq: {cseq}\r\nDate: {current_date}\r\nSession: {self.clients[address]['session_id']}\r\n"
                 response += f"Transport: RTP/AVP;unicast;client_port={client_rtp_port}-{client_rtcp_port};server_port={server_rtp_port}-{server_rtcp_port};ssrc={ssrc_value};mode=\"play\"\r\n\r\n"
                 print(f'[<---] Sending the response: to connection {connection}\n {response}')
                 connection.send(response.encode())
 
+        # elif method == "PLAY" and address in self.clients and self.clients[address]['state'] == "INIT":
+        #     threading.Thread(target=self.clients[address]['streamer'].stream_video).start()
+        #     self.clients[address]['state'] = "PLAYING"
+        #     response = f"RTSP/1.0 200 OK\r\nCSeq: {cseq}\r\nSession: {self.clients[address]['streamer'].session_id}\r\n\r\n"
+        #     connection.send(response.encode())
         elif method == "PLAY" and address in self.clients and self.clients[address]['state'] == "INIT":
-            threading.Thread(target=self.clients[address]['streamer'].stream_video).start()
+            for streamer in self.clients[address]['streamers'].values():
+                threading.Thread(target=streamer.stream_video).start()
             self.clients[address]['state'] = "PLAYING"
-            response = f"RTSP/1.0 200 OK\r\nCSeq: {cseq}\r\nSession: {self.clients[address]['streamer'].session_id}\r\n\r\n"
+            response = f"RTSP/1.0 200 OK\r\nCSeq: {cseq}\r\nSession: {self.clients[address]['session_id']}\r\n\r\n"
             connection.send(response.encode())
 
         elif method == "PAUSE" and address in self.clients and self.clients[address]['state'] == "PLAYING":
@@ -202,6 +239,7 @@ class RTSPPServer:
             return None, None
 
     def create_sdp_description(self, address, video_name):
+        video_name = 'test2.mp4'
         video_path = self.get_video_path('test2.mp4') # Todo: Fix video_name to be consistent and adjust here.
         print(f'Creating SDP description. Video Path: {video_path}')
         sps, pps = self.get_sps_pps(video_path)
@@ -215,12 +253,27 @@ class RTSPPServer:
         sdp += "s=RTSP Server\r\n"
         sdp += "c=IN IP4 " + address[0] + "\r\n"
         sdp += "t=0 0\r\n"
+        sdp += "a=recvonly\r\n"
+        sdp += "a=type:broadcast\r\n"
+        sdp += "a=charset:UTF-8\r\n"
+        sdp += "a=control:rtsp://" + self.host + ":" + str(self.port) + "/" + video_name + "\r\n"
+
+        # Video Track
         sdp += "m=video 0 RTP/AVP 96\r\n"
+        sdp += "b=RR:0\r\n"
         sdp += "a=rtpmap:96 H264/90000\r\n"
         sdp += f"a=fmtp:96 packetization-mode=1;profile-level-id=42e01f;sprop-parameter-sets={sps},{pps};\r\n"
         sdp += "a=control:trackID=0\r\n"
-        # Add more media descriptions as needed (audio)
+
+        # Audio Track - assuming AAC audio for now (Todo: fix it to be dynamic)
+        sdp += "a=control:rtsp://" + self.host + ":" + str(self.port) + "/" + video_name + "/trackID=0\r\n"
+        sdp += "m=audio 0 RTP/AVP 97\r\n"
+        sdp += "b=RR:0\r\n"
+        sdp += "a=rtpmap:97 MPEG4-GENERIC/44100/2\r\n"
+        sdp += "a=fmtp:97 profile-level-id=1;mode=AAC-hbr;sizelength=13;indexlength=3;indexdeltalength=3;config=1210\r\n"
+        sdp += "a=control:rtsp://" + self.host + ":" + str(self.port) + "/" + video_name + "/trackID=1\r\n"
         return sdp
+
     
     def extract_track_id(self, url_path):
         parts = url_path.split('/')

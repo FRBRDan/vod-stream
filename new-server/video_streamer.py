@@ -13,7 +13,7 @@ RTP_HEADER_SIZE = 12
 
 
 class VideoStreamer:
-    def __init__(self, client_info, video_path, client_rtp_port, client_rtcp_port):
+    def __init__(self, client_info, video_path, client_rtp_port, client_rtcp_port, track_id):
         logging.info(f'Initializing VideoStreamer with {client_info} and {video_path}.')
         self.client_info = client_info  # Tuple (IP, port)
         self.video_path = video_path
@@ -21,6 +21,7 @@ class VideoStreamer:
         self.client_rtcp_port = client_rtcp_port
         self.rtp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.streaming = False
+        self.track_id = track_id
         self.session_id = self.generate_session_id()
         self.sequence_num = 0
         self.timestamp = 0
@@ -72,11 +73,13 @@ class VideoStreamer:
         # Dynamically set the RTP streaming address
         rtp_address = f'rtp://{self.client_info[0]}:{self.client_rtp_port}'
 
-        command = [
-            'ffmpeg', '-re', '-i', self.video_path,
-            '-vcodec', 'libx264', '-an',
-            '-f', 'rtp', rtp_address
-        ]
+         # Check if the streamer is for video or audio
+        if self.track_id == '0':  # Assuming trackID 0 is for video
+            codec_option = ['-vcodec', 'libx264', '-an']  # Video codec settings
+        else:  # Assuming any other trackID would be for audio
+            codec_option = ['-acodec', 'libmp3lame', '-vn']  # Audio codec settings
+
+        command = ['ffmpeg', '-re', '-i', self.video_path] + codec_option + ['-f', 'rtp', rtp_address]
 
         try:
             ffmpeg_process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
