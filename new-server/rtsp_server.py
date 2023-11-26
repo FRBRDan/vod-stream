@@ -96,31 +96,6 @@ class RTSPPServer:
             connection.send(response.encode())
 
 
-        # elif method == "SETUP" and video_path:
-        #     logging.info("Processing SETUP request.")
-
-        #     # Extract the client's RTP and RTCP port numbers
-        #     client_rtp_port, client_rtcp_port = self.extract_client_ports(request)
-            
-        #     if client_rtp_port and client_rtp_port:
-        #         self.clients[address] = {
-        #             'streamer': VideoStreamer(address, video_path, client_rtp_port, client_rtcp_port),
-        #             'state': "INIT"
-        #         }
-        #         self.clients[address]['streamer'].setup_stream()
-
-        #         # Inside process_request method under SETUP:
-        #         server_rtp_port = randint(50000, 55000)
-        #         server_rtcp_port = server_rtp_port + 1
-        #         self.clients[address]['rtp_port'] = server_rtp_port
-        #         self.clients[address]['rtcp_port'] = server_rtcp_port
-        #         current_date = formatdate(timeval=None, localtime=False, usegmt=True)
-        #         ssrc_value = format(random.getrandbits(32), '08x')
-        #         response = f"RTSP/1.0 200 OK\r\nCSeq: {cseq}\r\nDate: {current_date}\r\nSession: {self.clients[address]['streamer'].session_id}\r\n"
-        #         response += f"Transport: RTP/AVP;unicast;client_port={client_rtp_port}-{client_rtcp_port};server_port={server_rtp_port}-{server_rtcp_port};ssrc={ssrc_value};mode=\"play\"\r\n\r\n"
-        #         print(f'[<---] Sending the response: to connection {connection}\n {response}')
-        #         connection.send(response.encode())
-
         elif method == "SETUP" and video_path:
             logging.info("Processing MODIFIED SETUP request.")
 
@@ -135,7 +110,6 @@ class RTSPPServer:
                         'streamers': {},
                         'state': "INIT"
                     }
-#VideoStreamer(address, video_path, client_rtp_port, client_rtcp_port),
 
                 # Create a new streamer for each track
                 self.clients[address]['streamers'][track_id] = VideoStreamer(address, video_path, client_rtp_port, client_rtcp_port, track_id)
@@ -152,11 +126,6 @@ class RTSPPServer:
                 print(f'[<---] Sending the response: to connection {connection}\n {response}')
                 connection.send(response.encode())
 
-        # elif method == "PLAY" and address in self.clients and self.clients[address]['state'] == "INIT":
-        #     threading.Thread(target=self.clients[address]['streamer'].stream_video).start()
-        #     self.clients[address]['state'] = "PLAYING"
-        #     response = f"RTSP/1.0 200 OK\r\nCSeq: {cseq}\r\nSession: {self.clients[address]['streamer'].session_id}\r\n\r\n"
-        #     connection.send(response.encode())
         elif method == "PLAY" and address in self.clients and self.clients[address]['state'] == "INIT":
             for streamer in self.clients[address]['streamers'].values():
                 threading.Thread(target=streamer.stream_video).start()
