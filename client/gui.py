@@ -130,9 +130,9 @@ class GUI(QMainWindow):
 
     def get_video_url(self, video_name):
         video_urls = {
-            "Movie 1": "rtsp://localhost:8554/sample.mp4",
-            "Movie 2": "rtsp://localhost:8554/test.mp4",
-            "Movie 3": "rtsp://localhost:8554/test2.mp4",
+            "Movie 1": "rtsp://localhost:8554/sample",
+            "Movie 2": "rtsp://localhost:8554/test",
+            "Movie 3": "rtsp://localhost:8554/test2",
         }
         return video_urls.get(video_name)
 

@@ -42,7 +42,15 @@ sudo apt-get install python3-pyqt5
 
 *Make sure VLC Media Player is installed on your system as the vlc Python library requires it to function properly.*
 
+Install GStreamer RTSP Server Plugin
+```
+sudo apt-get install gir1.2-gst-rtsp-server-1.0
+```
 
+Install GStreamer "Good" Plugins
+```
+sudo apt-get install gstreamer1.0-plugins-good
+```
 
 ## Don't forget - Mapping of video names to file paths inside client/gui.py and server/rtsp_server.py
 
