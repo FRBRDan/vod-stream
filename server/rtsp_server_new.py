@@ -25,11 +25,12 @@ class VideoStreamerRTSPServer:
                 endpoint = "/" + os.path.splitext(video)[0]
                 factory = GstRtspServer.RTSPMediaFactory()
                 factory.set_launch(
-                                f'( filesrc location="{os.path.join(videos_dir, video)}" ! '
-                                'decodebin name=dec '
-                                'dec. ! queue ! videoconvert ! x264enc ! rtph264pay name=pay0 pt=96 '
-                                'dec. ! queue ! audioconvert ! audioresample ! avenc_aac ! rtpmp4apay name=pay1 pt=97 )'
-                            )
+                        f'( filesrc location="{os.path.join(videos_dir, video)}" ! '
+                        'decodebin name=dec '
+                        'dec. ! queue ! videoconvert ! x264enc tune=zerolatency ! rtph264pay name=pay0 pt=96 '
+                        'dec. ! queue ! audioconvert ! audioresample ! opusenc ! rtpopuspay name=pay1 pt=97 )'
+                    )
+
                 factory.set_shared(True)
                 self.mounts.add_factory(endpoint, factory)
                 print(f"Added endpoint {endpoint} for {video}")
