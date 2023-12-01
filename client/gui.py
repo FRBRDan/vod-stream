@@ -6,6 +6,8 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QFont
+from PyQt5.QtCore import QTimer
+
 
 class GUI(QMainWindow):
     def __init__(self):
@@ -68,6 +70,23 @@ class GUI(QMainWindow):
         # Create and add a slider for video seeking
         self.seek_slider = QSlider(Qt.Horizontal)
         self.layout.addWidget(self.seek_slider)
+
+        # Modify seek_slider
+        self.seek_slider.setRange(0, 1000)  # Example range
+        self.seek_slider.sliderMoved.connect(self.set_position)
+
+        # Create and add a slider for volume control
+        self.volume_slider = QSlider(Qt.Horizontal)
+        self.volume_slider.setRange(0, 100)  # VLC volume range is from 0 to 100
+        self.volume_slider.setValue(self.media_player.audio_get_volume())
+        self.volume_slider.valueChanged.connect(self.set_volume)
+        self.layout.addWidget(self.volume_slider)
+
+        # Timer to update seek_slider position
+        self.timer = QTimer(self)
+        self.timer.setInterval(100)  # Update every 100 ms
+        self.timer.timeout.connect(self.update_ui)
+        self.timer.start()
 
         # Create and add a status bar
         self.status_bar = QStatusBar()
@@ -135,6 +154,21 @@ class GUI(QMainWindow):
             "Movie 3": "rtsp://localhost:8554/test2",
         }
         return video_urls.get(video_name)
+
+    # New method to set volume
+    def set_volume(self, value):
+        self.media_player.audio_set_volume(value)
+
+    # New method to set media position
+    def set_position(self, value):
+        # Setting the position to where the user moved the slider
+        self.media_player.set_position(value / 1000.0)
+
+    # New method to update UI components
+    def update_ui(self):
+        # Update the seek slider to the current media player time
+        media_pos = int(self.media_player.get_position() * 1000)
+        self.seek_slider.setValue(media_pos)
 
 def main():
     app = QApplication(sys.argv)
