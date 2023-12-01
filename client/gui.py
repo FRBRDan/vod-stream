@@ -66,6 +66,11 @@ class GUI(QMainWindow):
         self.pause_button = QPushButton(QIcon('pause_icon.png'), 'Pause')
         self.buttons_layout.addWidget(self.pause_button)
         self.pause_button.clicked.connect(self.pause_video)
+
+        # Playback Time Label
+        self.playback_label = QLabel('00:00 / 00:00')
+        self.playback_label.setFont(QFont('Arial', 10))
+        self.layout.addWidget(self.playback_label)
         
         # Create and add a slider for video seeking
         self.seek_slider = QSlider(Qt.Horizontal)
@@ -75,10 +80,16 @@ class GUI(QMainWindow):
         self.seek_slider.setRange(0, 1000)  # Example range
         self.seek_slider.sliderMoved.connect(self.set_position)
 
+        # Volume Label
+        self.volume_label = QLabel('Volume 0%')
+        self.volume_label.setFont(QFont('Arial', 10))
+        self.layout.addWidget(self.volume_label)
+
         # Create and add a slider for volume control
         self.volume_slider = QSlider(Qt.Horizontal)
         self.volume_slider.setRange(0, 100)  # VLC volume range is from 0 to 100
-        self.volume_slider.setValue(self.media_player.audio_get_volume())
+        initial_volume = self.media_player.audio_get_volume()
+        self.volume_slider.setValue(initial_volume)
         self.volume_slider.valueChanged.connect(self.set_volume)
         self.layout.addWidget(self.volume_slider)
 
@@ -155,20 +166,31 @@ class GUI(QMainWindow):
         }
         return video_urls.get(video_name)
 
-    # New method to set volume
     def set_volume(self, value):
         self.media_player.audio_set_volume(value)
+        self.volume_label.setText(f'Volume {value}%')
 
-    # New method to set media position
+    # Set media position
     def set_position(self, value):
         # Setting the position to where the user moved the slider
         self.media_player.set_position(value / 1000.0)
-
-    # New method to update UI components
+  
+    # Update UI components
     def update_ui(self):
         # Update the seek slider to the current media player time
         media_pos = int(self.media_player.get_position() * 1000)
         self.seek_slider.setValue(media_pos)
+
+        # Update playback time label
+        if self.media_player.is_playing():
+            current_time = self.media_player.get_time() // 1000  # Current time in seconds
+            total_time = self.media_player.get_length() // 1000  # Total time in seconds
+        else:
+            current_time = 0
+            total_time = 0
+        current_time_str = f'{current_time // 60:02d}:{current_time % 60:02d}'
+        total_time_str = f'{total_time // 60:02d}:{total_time % 60:02d}'
+        self.playback_label.setText(f'{current_time_str} / {total_time_str}')
 
 def main():
     app = QApplication(sys.argv)
