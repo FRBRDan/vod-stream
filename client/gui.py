@@ -49,7 +49,11 @@ class GUI(QMainWindow):
         self.layout.addWidget(self.video_list_widget)
 
         # Add some example items to the list
-        self.video_list_widget.addItems(["Movie 1", "Movie 2", "Movie 3"])
+        self.video_list_widget.addItems(["Movie 1", "Movie 2"])
+
+        # Connect the itemSelectionChanged signal to the new method
+        self.video_list_widget.itemSelectionChanged.connect(self.on_video_selection_changed)
+
 
         # Create control buttons layout
         self.buttons_layout = QHBoxLayout()
@@ -58,14 +62,14 @@ class GUI(QMainWindow):
         # Create and add the play and stop buttons with icons
         self.play_button = QPushButton('Play')  # If icon file is not available
         self.stop_button = QPushButton('Stop')  # If icon file is not available
-        self.pause_button = QPushButton('Pause')  # If icon file is not available
+        # self.pause_button = QPushButton('Pause')  # If icon file is not available
         self.buttons_layout.addWidget(self.play_button)
         self.buttons_layout.addWidget(self.stop_button)
 
         # Create and add the pause button with an icon
         self.pause_button = QPushButton(QIcon('pause_icon.png'), 'Pause')
-        self.buttons_layout.addWidget(self.pause_button)
-        self.pause_button.clicked.connect(self.pause_video)
+        # self.buttons_layout.addWidget(self.pause_button)
+        # self.pause_button.clicked.connect(self.pause_video)
 
         # Playback Time Label
         self.playback_label = QLabel('00:00 / 00:00')
@@ -119,6 +123,14 @@ class GUI(QMainWindow):
         # Show the GUI
         self.show()
 
+    def on_video_selection_changed(self):
+        # Reset the play button text to 'Play'
+        self.play_button.setText('Play')
+
+        # Stop the current video and reset the media player
+        self.media_player.stop()
+
+
     # Add the new pause_video method
     def pause_video(self):
         self.media_player.pause()  # This method toggles pause/unpause on the media player.
@@ -136,15 +148,21 @@ class GUI(QMainWindow):
                 self.status_bar.showMessage(f"Failed to set video output: {e}")
 
     def play_video(self):
-        try:
-            video_url = self.get_video_url(self.video_list_widget.currentItem().text())
-            print(video_url)
-            if video_url:
-                Media = self.vlc_instance.media_new(video_url)  # Use dynamic URL
-                self.media_player.set_media(Media)
+        if self.media_player.is_playing():
+            self.media_player.pause()
+            self.play_button.setText('Play')
+        else:
+            try:
+                if not self.media_player.get_media():
+                    video_url = self.get_video_url(self.video_list_widget.currentItem().text())
+                    if video_url:
+                        Media = self.vlc_instance.media_new(video_url)
+                        self.media_player.set_media(Media)
                 self.media_player.play()
-        except Exception as e:
-            print(f"Error in play_video: {e}")
+                self.play_button.setText('Pause')
+            except Exception as e:
+                print(f"Error in play_video: {e}")
+
 
 
     def stop_video(self):
@@ -161,8 +179,7 @@ class GUI(QMainWindow):
     def get_video_url(self, video_name):
         video_urls = {
             "Movie 1": "rtsp://localhost:8554/sample",
-            "Movie 2": "rtsp://localhost:8554/test",
-            "Movie 3": "rtsp://localhost:8554/test2",
+            "Movie 2": "rtsp://localhost:8554/test2",
         }
         return video_urls.get(video_name)
 
