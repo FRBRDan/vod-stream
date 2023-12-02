@@ -1,5 +1,6 @@
 import sys
 import vlc
+import os
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget,
     QListWidget, QLabel, QSlider, QStatusBar, QHBoxLayout, QFrame
@@ -7,6 +8,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QFont
 from PyQt5.QtCore import QTimer
+import requests
 
 
 class GUI(QMainWindow):
@@ -49,7 +51,9 @@ class GUI(QMainWindow):
         self.layout.addWidget(self.video_list_widget)
 
         # Add some example items to the list
-        self.video_list_widget.addItems(["Movie 1", "Movie 2"])
+        # self.video_list_widget.addItems(["Movie 1", "Movie 2"])
+
+        self.fetch_movie_list()
 
         # Connect the itemSelectionChanged signal to the new method
         self.video_list_widget.itemSelectionChanged.connect(self.on_video_selection_changed)
@@ -154,7 +158,8 @@ class GUI(QMainWindow):
         else:
             try:
                 # Fetch the URL of the selected video
-                video_url = self.get_video_url(self.video_list_widget.currentItem().text())
+                video_name = self.video_list_widget.currentItem().text()
+                video_url = self.get_video_url(video_name)
                 if video_url:
                     # Create a new Media instance with the URL
                     Media = self.vlc_instance.media_new(video_url)
@@ -165,9 +170,6 @@ class GUI(QMainWindow):
                     self.play_button.setText('Pause')
             except Exception as e:
                 print(f"Error in play_video: {e}")
-
-
-
 
     def stop_video(self):
         try:
@@ -181,11 +183,7 @@ class GUI(QMainWindow):
         super().closeEvent(event)
 
     def get_video_url(self, video_name):
-        video_urls = {
-            "Movie 1": "rtsp://localhost:8554/sample",
-            "Movie 2": "rtsp://localhost:8554/test2",
-        }
-        return video_urls.get(video_name)
+        return f"rtsp://localhost:8554/{video_name}"
 
     def set_volume(self, value):
         self.media_player.audio_set_volume(value)
@@ -212,6 +210,19 @@ class GUI(QMainWindow):
         current_time_str = f'{current_time // 60:02d}:{current_time % 60:02d}'
         total_time_str = f'{total_time // 60:02d}:{total_time % 60:02d}'
         self.playback_label.setText(f'{current_time_str} / {total_time_str}')
+
+    def fetch_movie_list(self):
+        # Implement the logic to fetch the movie list from the server
+        try:
+            response = requests.get('http://localhost:8000/movies')
+            if response.status_code == 200:
+                movies = response.json()
+                formatted_movies = [os.path.splitext(movie)[0] for movie in movies]
+                print(formatted_movies)
+                self.video_list_widget.clear()
+                self.video_list_widget.addItems(formatted_movies)
+        except Exception as e:
+            print(f"Error fetching movie list: {e}")
 
 def main():
     app = QApplication(sys.argv)

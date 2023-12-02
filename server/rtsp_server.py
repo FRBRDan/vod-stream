@@ -1,6 +1,7 @@
 import gi
 import threading
 import os
+from request_handler import *
 
 gi.require_version('Gst', '1.0')
 gi.require_version('GstRtspServer', '1.0')
@@ -41,5 +42,10 @@ def start_rtsp_server():
     loop.run()
 
 if __name__ == "__main__":
+    # Start HTTP server
+    http_server_thread = threading.Thread(target=start_http_server)
+    http_server_thread.start()
+
+    # Start RTSP server
     server_thread = threading.Thread(target=start_rtsp_server)
     server_thread.start()
