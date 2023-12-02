@@ -16,6 +16,8 @@ class GUI(QMainWindow):
         super().__init__()
         self.vlc_instance = vlc.Instance()
         self.media_player = self.vlc_instance.media_player_new()
+        # Set the initial volume of the media player to 100%
+        self.media_player.audio_set_volume(100)
         self.initUI()
 
     def initUI(self):
@@ -89,13 +91,15 @@ class GUI(QMainWindow):
         self.seek_slider.sliderMoved.connect(self.set_position)
 
         # Volume Label
-        self.volume_label = QLabel('Volume 0%')
+        self.volume_label = QLabel('Volume 100%')
         self.volume_label.setFont(QFont('Arial', 10))
         self.layout.addWidget(self.volume_label)
 
         # Create and add a slider for volume control
         self.volume_slider = QSlider(Qt.Horizontal)
         self.volume_slider.setRange(0, 100)  # VLC volume range is from 0 to 100
+        # Set the initial value of the volume slider to 100
+        self.volume_slider.setValue(100)
         initial_volume = self.media_player.audio_get_volume()
         self.volume_slider.setValue(initial_volume)
         self.volume_slider.valueChanged.connect(self.set_volume)
@@ -156,20 +160,28 @@ class GUI(QMainWindow):
             self.media_player.pause()
             self.play_button.setText('Play')
         else:
-            try:
-                # Fetch the URL of the selected video
-                video_name = self.video_list_widget.currentItem().text()
-                video_url = self.get_video_url(video_name)
-                if video_url:
-                    # Create a new Media instance with the URL
-                    Media = self.vlc_instance.media_new(video_url)
-                    # Set the media for the player
-                    self.media_player.set_media(Media)
-                    # Play the video
-                    self.media_player.play()
-                    self.play_button.setText('Pause')
-            except Exception as e:
-                print(f"Error in play_video: {e}")
+            # Check if the media player has media loaded and is in a paused state
+            if self.media_player.get_media() and self.media_player.get_state() == vlc.State.Paused:
+                self.media_player.play()
+                self.play_button.setText('Pause')
+            else:
+                try:
+                    # Fetch the URL of the selected video
+                    video_name = self.video_list_widget.currentItem().text()
+                    video_url = self.get_video_url(video_name)
+                    if video_url:
+                        # Create a new Media instance with the URL only if it's different from the current one
+                        current_media = self.media_player.get_media()
+                        if not current_media or current_media.get_mrl() != video_url:
+                            Media = self.vlc_instance.media_new(video_url)
+                            self.media_player.set_media(Media)
+                        # Play the video
+                        self.media_player.play()
+                        self.play_button.setText('Pause')
+                except Exception as e:
+                    print(f"Error in play_video: {e}")
+
+
 
     def stop_video(self):
         try:
