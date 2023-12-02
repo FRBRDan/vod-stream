@@ -153,15 +153,19 @@ class GUI(QMainWindow):
             self.play_button.setText('Play')
         else:
             try:
-                if not self.media_player.get_media():
-                    video_url = self.get_video_url(self.video_list_widget.currentItem().text())
-                    if video_url:
-                        Media = self.vlc_instance.media_new(video_url)
-                        self.media_player.set_media(Media)
-                self.media_player.play()
-                self.play_button.setText('Pause')
+                # Fetch the URL of the selected video
+                video_url = self.get_video_url(self.video_list_widget.currentItem().text())
+                if video_url:
+                    # Create a new Media instance with the URL
+                    Media = self.vlc_instance.media_new(video_url)
+                    # Set the media for the player
+                    self.media_player.set_media(Media)
+                    # Play the video
+                    self.media_player.play()
+                    self.play_button.setText('Pause')
             except Exception as e:
                 print(f"Error in play_video: {e}")
+
 
 
 
