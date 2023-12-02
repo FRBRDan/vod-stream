@@ -32,7 +32,7 @@ class VideoStreamerRTSPServer:
                         'dec. ! queue ! audioconvert ! audioresample ! opusenc ! rtpopuspay name=pay1 pt=97 )'
                     )
 
-                factory.set_shared(True)
+                factory.set_shared(False) # Create a separate instance for each client
                 self.mounts.add_factory(endpoint, factory)
                 print(f"Added endpoint {endpoint} for {video}")
 
