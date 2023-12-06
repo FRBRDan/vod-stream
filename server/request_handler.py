@@ -3,7 +3,7 @@ import socketserver
 import json
 import os
 
-PORT = 8000
+HTTP_PORT = 8000
 
 class RequestHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
@@ -18,7 +18,7 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
 
 def start_http_server():
-    with socketserver.TCPServer(("", PORT), RequestHandler) as httpd:
-        print("serving at port", PORT)
+    with socketserver.TCPServer(("", HTTP_PORT), RequestHandler) as httpd:
+        print("serving at port", HTTP_PORT)
         httpd.serve_forever()
 

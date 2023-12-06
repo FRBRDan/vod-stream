@@ -1,5 +1,5 @@
 # client/main.py
-from gui import main
+from MediaPlayerApp import main
 
 if __name__ == "__main__":
     main()
