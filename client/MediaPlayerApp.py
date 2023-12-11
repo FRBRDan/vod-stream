@@ -169,7 +169,7 @@ class MediaPlayerApp(QMainWindow):
                     video_name = self.video_list_widget.currentItem().text()
                     video_url = self.get_video_url(video_name)
                     if video_url:
-                        # Create a new Media instance with the URL only if it's different from the current one
+                        # Create a new media instance with the URL only if it's different from the current one
                         current_media = self.media_player.get_media()
                         if not current_media or current_media.get_mrl() != video_url:
                             Media = self.vlc_instance.media_new(video_url)
