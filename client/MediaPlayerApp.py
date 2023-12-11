@@ -2,7 +2,7 @@ import sys
 import vlc
 import os
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget,
+    QApplication, QMainWindow, QDesktopWidget, QPushButton, QVBoxLayout, QWidget,
     QListWidget, QLabel, QSlider, QStatusBar, QHBoxLayout, QFrame
 )
 from PyQt5.QtCore import QCoreApplication
@@ -34,7 +34,7 @@ class MediaPlayerApp(QMainWindow):
         """
         # Set main window properties
         self.setWindowTitle('VOD Client')
-        self.setGeometry(100, 100, 1000, 600)
+        self.set_dynamic_window_size()
         self.setStyleSheet(GUI_STYLES)
 
         # Create central widget and layout
@@ -62,9 +62,8 @@ class MediaPlayerApp(QMainWindow):
         self.layout.addLayout(self.buttons_layout)
 
         # Create and add the play and stop buttons with icons
-        self.play_button = QPushButton('Play')  # If icon file is not available
-        self.stop_button = QPushButton('Stop')  # If icon file is not available
-        # self.pause_button = QPushButton('Pause')  # If icon file is not available
+        self.play_button = QPushButton('Play')
+        self.stop_button = QPushButton('Stop')
         self.buttons_layout.addWidget(self.play_button)
         self.buttons_layout.addWidget(self.stop_button)
 
@@ -78,7 +77,7 @@ class MediaPlayerApp(QMainWindow):
         self.layout.addWidget(self.seek_slider)
 
         # Modify seek_slider
-        self.seek_slider.setRange(0, 1000)  # Example range
+        self.seek_slider.setRange(0, SLIDER_RANGE_MAX)
         self.seek_slider.sliderMoved.connect(self.set_position)
 
         # Volume Label
@@ -121,6 +120,20 @@ class MediaPlayerApp(QMainWindow):
 
         # Show the GUI
         self.show()
+
+    def set_dynamic_window_size(self):
+        desktop = QDesktopWidget().screenGeometry()
+        screen_width = desktop.width()
+        screen_height = desktop.height()
+
+        width_factor = 0.8  # 80% of the screen width
+        height_factor = 0.6  # 60% of the screen height
+
+        window_width = int(screen_width * width_factor)
+        window_height = int(screen_height * height_factor)
+
+        self.setGeometry((screen_width - window_width) // 2, (screen_height - window_height) // 2, 
+                         window_width, window_height)
 
     def on_video_selection_changed(self):
         """
