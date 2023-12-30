@@ -208,7 +208,6 @@ class MediaPlayerApp(QMainWindow):
         """
         Override the close event to handle proper teardown.
         """
-        self.rtsp_client.teardown()
         super().closeEvent(event)
 
     def get_video_url(self, video_name):

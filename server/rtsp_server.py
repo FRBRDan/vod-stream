@@ -28,13 +28,12 @@ class VideoStreamerRTSPServer:
 
     def setup_endpoints(self):
         try:
-            videos_dir = "videos/"
-            for video in os.listdir(videos_dir):
+            for video in os.listdir(LOCAL_VIDEOS_PATH):
                 if video.endswith((".mp4")):  # Add other formats as needed
                     endpoint = "/" + os.path.splitext(video)[0]
                     factory = GstRtspServer.RTSPMediaFactory()
                     factory.set_launch(
-                            f'( filesrc location="{os.path.join(videos_dir, video)}" ! '
+                            f'( filesrc location="{os.path.join(LOCAL_VIDEOS_PATH, video)}" ! '
                             'decodebin name=dec '
                             'dec. ! queue ! videoconvert ! x264enc tune=zerolatency ! rtph264pay name=pay0 pt=96 '
                             'dec. ! queue ! audioconvert ! audioresample ! opusenc ! rtpopuspay name=pay1 pt=97 )'
